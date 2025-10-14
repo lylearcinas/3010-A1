@@ -31,7 +31,7 @@ def runProgram():
                 print(data.decode('UTF-8'))
                 conn.sendall(b"hello")
             except Exception as e:
-                print(e)
+                print("Error: " + e)
 
 
 def verifyArgs():
