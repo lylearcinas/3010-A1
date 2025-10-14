@@ -4,11 +4,11 @@ import socket
 
 
 def main():
-    print(sys.argv)
-    if sys.argv[1] == "arg1":
-        print("Yippee")
-    else:
-        print("Nooo")
+    getArgs()
+
+def getArgs():
+    if len(sys.argv) != 3:
+        raise ValueError("Arguments must be in the form <clientport> <workerport>")
 
 if __name__=="__main__":
     main()
