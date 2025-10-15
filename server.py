@@ -2,9 +2,14 @@ import select
 import sys
 import socket
 
-queue = []
+dataQueue = []
+statusArray = []
 hostname = socket.gethostname()
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+STATUS_WAITING = 'WAITING' 
+STATUS_RUNNING = 'RUNNING' 
+STATUS_COMPLETED = 'COMPLETED'
 
 def main():
     runProgram()
@@ -29,7 +34,7 @@ def runProgram():
                     returnText = determineCommand(commandArray)
                     returnText = bytes(returnText, encoding='utf8')
                     conn.sendall(returnText)
-                    print("Array is now: " + str(queue))
+                    print("Array is now: " + str(dataQueue))
                 except ValueError as e:
                     conn.sendall(bytes(str(e), 'utf-8'))
     except Exception as e:
@@ -54,15 +59,16 @@ def determineCommand(commandArray):
     return output 
 
 def addJob(jobValue):
-    queue.append(jobValue) 
-    returnText = "Received JOB with ID <{}>".format(str(len(queue)-1))
+    dataQueue.append(jobValue)
+    statusArray.append(STATUS_WAITING)
+    returnText = "Received JOB with ID <{}>".format(str(len(dataQueue)-1))
 
     return returnText 
 
 def statusJob(jobValue):
     if jobValue.isdigit():
         try:
-            returnText = queue[int(jobValue)]
+            returnText = "Job {} is in status <{}>".format(jobValue, statusArray[int(jobValue)])
         except IndexError as e:
             returnText = "Job {} does not exist".format(jobValue)
     else:
