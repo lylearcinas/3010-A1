@@ -24,8 +24,12 @@ def runProgram():
         workersocket.bind((hostname, int(sys.argv[2])))
         workersocket.listen(5)
 
-        while True:
-            for socket in [clientsocket, workersocket]:
+        inputs = [ clientsocket, workersocket ]
+
+        while inputs:
+            readable, writable, exceptional = select.select(inputs, inputs, inputs)
+
+            for socket in readable:
                 conn,addr = socket.accept()
                 
                 with conn:
