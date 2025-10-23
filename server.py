@@ -6,6 +6,7 @@ dataQueue = []
 statusArray = []
 hostname = socket.gethostname()
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+workersocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 STATUS_WAITING = 'WAITING' 
 STATUS_RUNNING = 'RUNNING' 
@@ -20,23 +21,29 @@ def runProgram():
         clientsocket.bind((hostname, int(sys.argv[1])))
         clientsocket.listen(5)
 
-        while True:
-            conn,addr = clientsocket.accept()
+        workersocket.bind((hostname, int(sys.argv[2])))
+        workersocket.listen(5)
 
-            with conn:
-                print('Connected by', addr)
-                data = conn.recv(1024)
-                dataText = data.decode('UTF-8').strip()
-                print("heard:")
-                print(dataText)
-                commandArray = dataText.split(" ", 1)
-                try:
-                    returnText = determineCommand(commandArray)
-                    returnText = bytes(returnText, encoding='utf8')
-                    conn.sendall(returnText)
-                    print("Array is now: " + str(dataQueue))
-                except ValueError as e:
-                    conn.sendall(bytes(str(e), 'utf-8'))
+        while True:
+            for socket in [clientsocket, workersocket]:
+                conn,addr = socket.accept()
+                
+                with conn:
+                    print('Connected by', addr)
+                    data = conn.recv(1024)
+                    dataText = data.decode('UTF-8').strip()
+                    print("heard:")
+                    print(dataText)
+                    commandArray = dataText.split(" ", 1)
+                    try:
+                        returnText = determineCommand(commandArray)
+                        returnText = bytes(returnText, encoding='utf8')
+                        conn.sendall(returnText)
+                        print("Array is now: " + str(dataQueue))
+                        conn.close()
+                    except Exception as e:
+                        conn.sendall(bytes(str(e), 'utf-8'))   
+
     except Exception as e:
         print(e)
 
@@ -53,7 +60,7 @@ def determineCommand(commandArray):
             case "STATUS":
                 output = statusJob(commandArray[1])
             case _: raise ValueError("Commands should start with STATUS or JOB")
-    except ValueError as e:
+    except Exception as e:
         raise e
 
     return output 
