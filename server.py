@@ -2,9 +2,6 @@ import select
 import sys
 import socket
 
-dataQueue = []
-statusArray = []
-global currElement = 0
 hostname = socket.gethostname()
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 workersocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -15,6 +12,36 @@ STATUS_COMPLETED = 'COMPLETED'
 
 BUFFER_SIZE = 1024
 ENCODING = 'utf-8'
+
+
+class Queue:
+    def __init__(self):
+        self.dataQueue = []
+        self.statusArray = []
+        self.head = 0
+    
+    def getData(self, index):
+        return self.dataQueue[index]
+    
+    def getStatus(self, index):
+        return self.statusArray[index]
+    
+    def enqueue(self, jobValue):
+        self.dataQueue.append(jobValue)
+        self.statusArray.append(STATUS_WAITING)
+        return len(self.dataQueue) - 1
+    
+    def dequeue(self):
+        output = self.dataQueue[self.head]
+        self.statusArray[self.head] = STATUS_WAITING
+        self.head += 1
+        return output
+
+    def getDataQueue(self):
+        return self.dataQueue
+
+queue = Queue()
+
 
 def main():
     runProgram()
@@ -47,7 +74,7 @@ def runProgram():
                             commandArray = dataText.split(" ", 1)
                             returnText = determineCommand(commandArray)
                             returnText = bytes(returnText, encoding=ENCODING)
-                            print("Array is now: " + str(dataQueue))
+                            print("Array is now: " + str(queue.getDataQueue()))
                         else:
                             print('Worker connected at address ', addr)
                             data = conn.recv(BUFFER_SIZE)
@@ -81,16 +108,15 @@ def determineCommand(commandArray):
     return output 
 
 def addJob(jobValue):
-    dataQueue.append(jobValue)
-    statusArray.append(STATUS_WAITING)
-    returnText = "Received JOB with ID <{}>".format(str(len(dataQueue)-1))
+    id = queue.enqueue(jobValue)
+    returnText = "Received JOB with ID <{}>".format(str(id))
 
     return returnText 
 
 def statusJob(jobValue):
     if jobValue.isdigit():
         try:
-            returnText = "Job {} is in status <{}>".format(jobValue, statusArray[int(jobValue)])
+            returnText = "Job {} is in status <{}>".format(jobValue, queue.getStatus(int(jobValue)))
         except IndexError as e:
             returnText = "Job {} does not exist".format(jobValue)
     else:
@@ -103,14 +129,19 @@ def determineWorkerRequest(request):
         getJob(currElement)
 
 def getJob():
-    output = dataQueue[currElement]
-    statusArray[currElement] = STATUS_RUNNING
-    incrementQueue()
+    try: 
+        output = queue.dequeue()
+    except IndexError as e:
+        raise ValueError("List is currently empty")
     return output 
 
 def incrementQueue():
     currElement+=1
 
-
 if __name__=="__main__":
     main()
+
+
+
+
+
