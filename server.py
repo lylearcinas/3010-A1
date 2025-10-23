@@ -4,6 +4,7 @@ import socket
 
 dataQueue = []
 statusArray = []
+global currElement = 0
 hostname = socket.gethostname()
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 workersocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -11,6 +12,9 @@ workersocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 STATUS_WAITING = 'WAITING' 
 STATUS_RUNNING = 'RUNNING' 
 STATUS_COMPLETED = 'COMPLETED'
+
+BUFFER_SIZE = 1024
+ENCODING = 'utf-8'
 
 def main():
     runProgram()
@@ -31,22 +35,29 @@ def runProgram():
 
             for socket in readable:
                 conn,addr = socket.accept()
-                
+                returnText = ""
                 with conn:
-                    print('Connected by', addr)
-                    data = conn.recv(1024)
-                    dataText = data.decode('UTF-8').strip()
-                    print("heard:")
-                    print(dataText)
-                    commandArray = dataText.split(" ", 1)
                     try:
-                        returnText = determineCommand(commandArray)
-                        returnText = bytes(returnText, encoding='utf8')
+                        if socket is clientsocket:
+                            print('Connected by', addr)
+                            data = conn.recv(BUFFER_SIZE)
+                            dataText = data.decode('UTF-8').strip()
+                            print("heard:")
+                            print(dataText)
+                            commandArray = dataText.split(" ", 1)
+                            returnText = determineCommand(commandArray)
+                            returnText = bytes(returnText, encoding=ENCODING)
+                            print("Array is now: " + str(dataQueue))
+                        else:
+                            print('Worker connected at address ', addr)
+                            data = conn.recv(BUFFER_SIZE)
+                            dataText = data.decode('UTF-8').strip()
+                            print(dataText)
+                            returnText = bytes(getJob(), encoding=ENCODING)
                         conn.sendall(returnText)
-                        print("Array is now: " + str(dataQueue))
                         conn.close()
                     except Exception as e:
-                        conn.sendall(bytes(str(e), 'utf-8'))   
+                        conn.sendall(bytes(str(e), ENCODING))   
 
     except Exception as e:
         print(e)
@@ -63,7 +74,7 @@ def determineCommand(commandArray):
                 output = addJob(commandArray[1])
             case "STATUS":
                 output = statusJob(commandArray[1])
-            case _: raise ValueError("Commands should start with STATUS or JOB")
+            case _: raise ValueError("ERROR: Commands should start with STATUS or JOB")
     except Exception as e:
         raise e
 
@@ -86,6 +97,20 @@ def statusJob(jobValue):
         raise ValueError("Second argument for STATUS command must be an int")
 
     return returnText
+
+def determineWorkerRequest(request):
+    if request == "GET":
+        getJob(currElement)
+
+def getJob():
+    output = dataQueue[currElement]
+    statusArray[currElement] = STATUS_RUNNING
+    incrementQueue()
+    return output 
+
+def incrementQueue():
+    currElement+=1
+
 
 if __name__=="__main__":
     main()
