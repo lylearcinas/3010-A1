@@ -2,23 +2,15 @@ import select
 import sys
 import socket
 
-BUFFER_SIZE = 1024
-ENCODING = 'utf-8'
 STATUS_WAITING = 'WAITING' 
 STATUS_RUNNING = 'RUNNING' 
 STATUS_COMPLETED = 'COMPLETED'
-
-ARG_0 = 0
-ARG_1 = 1
-ARG_2 = 2
-
-NUM_ARGS = 3
 
 class Queue:
     def __init__(self):
         self.dataQueue = []
         self.statusArray = []
-        self.head = 0
+        self.head = INITAL_INDEX
     
     def getData(self, index):
         return self.dataQueue[index]
@@ -32,16 +24,30 @@ class Queue:
     def enqueue(self, jobValue):
         self.dataQueue.append(jobValue)
         self.statusArray.append(STATUS_WAITING)
-        return len(self.dataQueue) - 1
+        return len(self.dataQueue) - OFFSET 
     
     def dequeue(self):
         output = "{}: {}".format(self.head,self.dataQueue[self.head])
         self.statusArray[self.head] = STATUS_WAITING
-        self.head += 1
+        self.head += OFFSET 
         return output
 
     def getDataQueue(self):
         return self.dataQueue
+
+BUFFER_SIZE = 1024
+ENCODING = 'utf-8'
+BACKLOG = 5
+
+ARG_0 = 0
+ARG_1 = 1
+ARG_2 = 2
+NUM_ARGS = 3
+
+INITAL_INDEX = 0
+OFFSET = 1
+
+SPLIT_HALF = 1
 
 queue = Queue()
 hostname = socket.gethostname()
@@ -55,10 +61,10 @@ def runProgram():
     try:
         verifyArgs()
         clientsocket.bind((hostname, int(sys.argv[ARG_1])))
-        clientsocket.listen(5)
+        clientsocket.listen(BACKLOG)
 
         workersocket.bind((hostname, int(sys.argv[ARG_2])))
-        workersocket.listen(5)
+        workersocket.listen(BACKLOG)
 
         inputs = [ clientsocket, workersocket ]
 
@@ -71,20 +77,19 @@ def runProgram():
                 with conn:
                     try:
                         data = conn.recv(BUFFER_SIZE)
-                        dataText = data.decode('UTF-8').strip()
-                        commandArray = dataText.split(" ", 1)
+                        dataText = data.decode(ENCODING).strip()
+                        commandArray = dataText.split(" ", SPLIT_HALF)
 
                         if socket is clientsocket:
-                            print('Connected by', addr)
-                            print("heard:")
-                            print(dataText)
+                            print("CLIENT CONNECTED AT ADDRESS {}".format(addr))
+                            print("CLIENT > {}".format(dataText))
                             returnText = determineCommand(commandArray)
                             returnText = bytes(returnText, encoding=ENCODING)
-                            print("Array is now: " + str(queue.getDataQueue()))
                         else:
-                            print('Worker connected at address ', addr)
-                            print(dataText)
-                            returnText = bytes(determineWorkerRequest(commandArray), encoding=ENCODING)
+                            print("WORKER > {}".format(dataText))
+                            returnText = determineWorkerRequest(commandArray)
+                            print("WORKER < {}".format(returnText))
+                            returnText = bytes(returnText, ENCODING)
 
 
                         conn.sendall(returnText)
@@ -94,8 +99,6 @@ def runProgram():
                         conn.sendall(bytes(str(e), ENCODING))   
     except Exception as e:
         print(e)
-
-
 
 def verifyArgs():
     if len(sys.argv) != NUM_ARGS:
@@ -107,7 +110,7 @@ def verifyArgs():
 def determineCommand(commandArray): 
     output = ""
     try:
-        match commandArray[0]:
+        match commandArray[ARG_0]:
             case "JOB":
                 output = addJob(commandArray[ARG_1])
             case "STATUS":
@@ -151,10 +154,11 @@ def determineWorkerRequest(commandArray):
     return output
 
 def getJob():
+    output = "NO JOB"
     try: 
         output = queue.dequeue()
     except IndexError as e:
-        raise ValueError("No jobs are available")
+        raise ValueError(output)
     return output 
 
 def finishJob(jobValue):
