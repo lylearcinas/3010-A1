@@ -6,13 +6,11 @@ hostname = socket.gethostname()
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 workersocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+BUFFER_SIZE = 1024
+ENCODING = 'utf-8'
 STATUS_WAITING = 'WAITING' 
 STATUS_RUNNING = 'RUNNING' 
 STATUS_COMPLETED = 'COMPLETED'
-
-BUFFER_SIZE = 1024
-ENCODING = 'utf-8'
-
 
 class Queue:
     def __init__(self):
@@ -25,6 +23,9 @@ class Queue:
     
     def getStatus(self, index):
         return self.statusArray[index]
+    
+    def finish(self, index):
+        self.statusArray[index] = STATUS_COMPLETED
     
     def enqueue(self, jobValue):
         self.dataQueue.append(jobValue)
@@ -41,7 +42,6 @@ class Queue:
         return self.dataQueue
 
 queue = Queue()
-
 
 def main():
     runProgram()
@@ -65,22 +65,22 @@ def runProgram():
                 returnText = ""
                 with conn:
                     try:
+                        data = conn.recv(BUFFER_SIZE)
+                        dataText = data.decode('UTF-8').strip()
+                        commandArray = dataText.split(" ", 1)
+
                         if socket is clientsocket:
                             print('Connected by', addr)
-                            data = conn.recv(BUFFER_SIZE)
-                            dataText = data.decode('UTF-8').strip()
                             print("heard:")
                             print(dataText)
-                            commandArray = dataText.split(" ", 1)
                             returnText = determineCommand(commandArray)
                             returnText = bytes(returnText, encoding=ENCODING)
                             print("Array is now: " + str(queue.getDataQueue()))
                         else:
                             print('Worker connected at address ', addr)
-                            data = conn.recv(BUFFER_SIZE)
-                            dataText = data.decode('UTF-8').strip()
                             print(dataText)
-                            returnText = bytes(getJob(), encoding=ENCODING)
+                            returnText = bytes(determineWorkerRequest(commandArray), encoding=ENCODING)
+
                         conn.sendall(returnText)
                         conn.close()
                     except Exception as e:
@@ -124,19 +124,39 @@ def statusJob(jobValue):
 
     return returnText
 
-def determineWorkerRequest(request):
-    if request == "GET":
-        getJob(currElement)
+def determineWorkerRequest(commandArray):
+    output = ""
+    try:
+        match commandArray[0]:
+            case "GET":
+                output = getJob()
+            case "DONE":
+                output = finishJob(commandArray[1])
+            case _:
+                raise ValueError("Must either be GET or DONE")
+    except Exception as e:
+        raise e
+    return output
 
 def getJob():
     try: 
         output = queue.dequeue()
     except IndexError as e:
-        raise ValueError("List is currently empty")
+        raise ValueError("No jobs are available")
     return output 
 
-def incrementQueue():
-    currElement+=1
+def finishJob(jobValue):
+    output = ""
+    if jobValue.isdigit():
+        try:
+            queue.finish(int(jobValue))
+            output = "Completed job <{}>".format(jobValue)
+        except IndexError as e:
+            raise ValueError("Job <{}> does not exist".format(jobValue))
+    else:
+        raise ValueError("Second argument must be a job ID")
+    
+    return output
 
 if __name__=="__main__":
     main()
