@@ -11,7 +11,10 @@ ARG_2 = 2
 ARG_3 = 3
 NUM_ARGS = 4
 
+MULTICAST_HOST = "239.0.0.1"
+
 hostname = socket.gethostname()
+
 
 def main():
     runProgram()
@@ -26,6 +29,7 @@ def runProgram():
     completedJob = True 
     jobData = []
 
+    outputsocket = mc.multicastSenderSocket()
     syslogsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     while True:
         serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -47,7 +51,7 @@ def runProgram():
                     jobData = id_work[1].split(" ")
                     message = "Received job {}, starting work...\n".format(currJob)
                     syslogsocket.sendto(bytes(message, "utf-8"), (hostname, int(syslogport)))
-                    work(jobData)
+                    work(jobData, outputsocket, outputport)
                 else:
                     message = "No job available, trying again...\n"
                     syslogsocket.sendto(bytes(message, "utf-8"), (hostname, int(syslogport)))
@@ -60,9 +64,10 @@ def runProgram():
 
         time.sleep(1)
 
-def work(workArray):
+def work(workArray, outputsocket, outputport):
     for word in workArray:
         print(word)
+        outputsocket.sendto(bytes(word, 'utf-8'), (MULTICAST_HOST, int(outputport)))
         time.sleep(0.25)
 
 

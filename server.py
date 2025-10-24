@@ -2,7 +2,6 @@ import select
 import sys
 import socket
 
-
 BUFFER_SIZE = 1024
 ENCODING = 'utf-8'
 STATUS_WAITING = 'WAITING' 
@@ -89,14 +88,14 @@ def runProgram():
 
 
                         conn.sendall(returnText)
+                        conn.close()
 
                     except Exception as e:
                         conn.sendall(bytes(str(e), ENCODING))   
-                
-                    conn.close()
-
     except Exception as e:
         print(e)
+
+
 
 def verifyArgs():
     if len(sys.argv) != NUM_ARGS:
