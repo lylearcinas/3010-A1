@@ -23,6 +23,8 @@ def runProgram():
         while True:
             conn, addr = serversocket.accept()
 
+            data = conn.recv(BUFFER_SIZE)
+            dataText = data.decode('UTF-8').strip()
             print('Connected by', addr)
             print("heard:")
             print(dataText)
