@@ -45,7 +45,8 @@ class Queue:
         self.dataQueue.append(jobValue)
         self.statusArray.append(STATUS_WAITING)
         return len(self.dataQueue) - OFFSET 
-    
+
+    # Notice dequeue merely increments head and does not remove any data from the arrays. 
     def dequeue(self):
         output = "{}: {}".format(self.head,self.dataQueue[self.head])
         self.statusArray[self.head] = STATUS_WAITING
@@ -121,7 +122,7 @@ def runProgram():
                         conn.sendall(returnText)
                         conn.close()
 
-                    except Exception as e:
+                    except Exception as e: # If any exceptions
                         conn.sendall(bytes(str(e), ENCODING))   
     except Exception as e:
         print(e)
