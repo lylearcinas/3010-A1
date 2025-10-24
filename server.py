@@ -87,10 +87,13 @@ def runProgram():
                             print(dataText)
                             returnText = bytes(determineWorkerRequest(commandArray), encoding=ENCODING)
 
+
                         conn.sendall(returnText)
-                        conn.close()
+
                     except Exception as e:
                         conn.sendall(bytes(str(e), ENCODING))   
+                
+                    conn.close()
 
     except Exception as e:
         print(e)
