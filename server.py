@@ -33,7 +33,7 @@ class Queue:
         return len(self.dataQueue) - 1
     
     def dequeue(self):
-        output = self.dataQueue[self.head]
+        output = "{}: {}".format(self.head,self.dataQueue[self.head])
         self.statusArray[self.head] = STATUS_WAITING
         self.head += 1
         return output
@@ -91,7 +91,9 @@ def runProgram():
 
 def verifyArgs():
     if len(sys.argv) != 3:
-        raise ValueError("Arguments must be in the form <clientport> <workerport>")
+        raise ValueError("ERROR: Arguments must be in the form <clientport> <workerport>")
+    elif sys.argv[1] == sys.argv[2]:
+        raise ValueError("ERROR: Cannot use the same port for client and worker")
 
 def determineCommand(commandArray): 
     output = ""
