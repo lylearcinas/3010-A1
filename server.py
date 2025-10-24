@@ -1,16 +1,36 @@
+"""
+server.py
+The server implementation for Assignment 1.
+
+Author: Lyle Arcinas 
+Course: COMP 3010
+Term: Fall 2025
+"""
+
 import select
 import sys
 import socket
 
+# Constants used to flag what status a job is in.
 STATUS_WAITING = 'WAITING' 
 STATUS_RUNNING = 'RUNNING' 
 STATUS_COMPLETED = 'COMPLETED'
 
+"""
+class Queue
+
+A class for my queue implementation. I use a class so I can instantiate an instance of Queue.
+Note all elements stay in the queue. This is needed to get the status of completed jobs.
+"""
+
+INITIAL_INDEX = 0
+OFFSET = 1
+
 class Queue:
     def __init__(self):
-        self.dataQueue = []
+        self.dataQueue = [] # Two arrays are used; one to hold the data for a job, the other to hold its status. Indices should point to the same job.
         self.statusArray = []
-        self.head = INITAL_INDEX
+        self.head = INITIAL_INDEX
     
     def getData(self, index):
         return self.dataQueue[index]
@@ -30,24 +50,24 @@ class Queue:
         output = "{}: {}".format(self.head,self.dataQueue[self.head])
         self.statusArray[self.head] = STATUS_WAITING
         self.head += OFFSET 
-        return output
+        return output # Returns a string with the data of the dequeued job
 
     def getDataQueue(self):
         return self.dataQueue
-
+     
+# Constants for sending strings as bytes
 BUFFER_SIZE = 1024
 ENCODING = 'utf-8'
 BACKLOG = 5
 
+# Constants for fetching instruction parameters
 ARG_0 = 0
 ARG_1 = 1
 ARG_2 = 2
 NUM_ARGS = 3
 
-INITAL_INDEX = 0
-OFFSET = 1
 
-SPLIT_HALF = 1
+SPLIT_HALF = 1 # Used for splitting the client's commands in two
 
 queue = Queue()
 hostname = socket.gethostname()
@@ -59,7 +79,7 @@ def main():
 
 def runProgram():
     try:
-        verifyArgs()
+        verifyArgs() # Verifies that command parameters are in correct format
         clientsocket.bind((hostname, int(sys.argv[ARG_1])))
         clientsocket.listen(BACKLOG)
 
@@ -68,7 +88,7 @@ def runProgram():
 
         inputs = [ clientsocket, workersocket ]
 
-        while inputs:
+        while inputs: # Loops, making sure that all connected workers and clients are able to talk to the server
             readable, writable, exceptional = select.select(inputs, inputs, inputs)
 
             for socket in readable:
@@ -76,16 +96,22 @@ def runProgram():
                 returnText = ""
                 with conn:
                     try:
+                        # Both worker and client send commands in a format "COMMAND PARAMETER", so this splits it into its constituent parts
                         data = conn.recv(BUFFER_SIZE)
                         dataText = data.decode(ENCODING).strip()
                         commandArray = dataText.split(" ", SPLIT_HALF)
 
+                        # If a client connects:
                         if socket is clientsocket:
+                            # Print connection info into CMD
                             print("CLIENT CONNECTED AT ADDRESS {}".format(addr))
                             print("CLIENT > {}".format(dataText))
+
+                            # Determines what to return to the client
                             returnText = determineCommand(commandArray)
                             returnText = bytes(returnText, encoding=ENCODING)
                         else:
+                            # Also prints connection info into the cmd and determines work, but for a worker connection.
                             print("WORKER > {}".format(dataText))
                             returnText = determineWorkerRequest(commandArray)
                             print("WORKER < {}".format(returnText))
@@ -99,7 +125,11 @@ def runProgram():
                         conn.sendall(bytes(str(e), ENCODING))   
     except Exception as e:
         print(e)
+"""
+verifyArgs()
 
+Used to verify that the program was launched with the correct parameters.
+"""
 def verifyArgs():
     if len(sys.argv) != NUM_ARGS:
         raise ValueError("ERROR: Arguments must be in the form <clientport> <workerport>")
@@ -107,6 +137,11 @@ def verifyArgs():
         raise ValueError("ERROR: Cannot use the same port for client and worker")
 
 # Client methods
+"""
+determineCommand()
+
+Used to determine what work we need to do given a client's inputs.
+"""
 def determineCommand(commandArray): 
     output = ""
     try:
@@ -120,13 +155,21 @@ def determineCommand(commandArray):
         raise e
 
     return output 
+"""
+addJob()
 
+Adds a new job into the queue and returns its ID.
+"""
 def addJob(jobValue):
     id = queue.enqueue(jobValue)
     returnText = "Received JOB with ID <{}>".format(str(id))
 
     return returnText 
+"""
+statusJob()
 
+Returns the status for a given job ID.
+"""
 def statusJob(jobValue):
     if jobValue.isdigit():
         try:
@@ -139,6 +182,18 @@ def statusJob(jobValue):
     return returnText
 
 # Worker methods
+"""
+There are two headers a worker can send the server in my internal protocol:
+
+GET: Getting the job at the front of the queue.
+DONE <#>: Sets the job at ID # to completed.
+"""
+
+"""
+determineWorkerRequest()
+
+It takes in the input from the worker and determines which command it is sending the server; then, executes appropriately.
+"""
 def determineWorkerRequest(commandArray):
     output = ""
     try:
@@ -153,6 +208,12 @@ def determineWorkerRequest(commandArray):
         raise e
     return output
 
+
+"""
+getJob()
+
+Returns the job at the front of the queue.
+"""
 def getJob():
     output = "NO JOB"
     try: 
@@ -160,7 +221,11 @@ def getJob():
     except IndexError as e:
         raise ValueError(output)
     return output 
+"""
+finishJob()
 
+Sets the job with the specified ID as completed.
+"""
 def finishJob(jobValue):
     output = ""
     if jobValue.isdigit():
