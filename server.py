@@ -2,15 +2,18 @@ import select
 import sys
 import socket
 
-hostname = socket.gethostname()
-clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-workersocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 BUFFER_SIZE = 1024
 ENCODING = 'utf-8'
 STATUS_WAITING = 'WAITING' 
 STATUS_RUNNING = 'RUNNING' 
 STATUS_COMPLETED = 'COMPLETED'
+
+ARG_0 = 0
+ARG_1 = 1
+ARG_2 = 2
+
+NUM_ARGS = 3
 
 class Queue:
     def __init__(self):
@@ -42,6 +45,9 @@ class Queue:
         return self.dataQueue
 
 queue = Queue()
+hostname = socket.gethostname()
+clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+workersocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 def main():
     runProgram()
@@ -49,10 +55,10 @@ def main():
 def runProgram():
     try:
         verifyArgs()
-        clientsocket.bind((hostname, int(sys.argv[1])))
+        clientsocket.bind((hostname, int(sys.argv[ARG_1])))
         clientsocket.listen(5)
 
-        workersocket.bind((hostname, int(sys.argv[2])))
+        workersocket.bind((hostname, int(sys.argv[ARG_2])))
         workersocket.listen(5)
 
         inputs = [ clientsocket, workersocket ]
@@ -90,19 +96,20 @@ def runProgram():
         print(e)
 
 def verifyArgs():
-    if len(sys.argv) != 3:
+    if len(sys.argv) != NUM_ARGS:
         raise ValueError("ERROR: Arguments must be in the form <clientport> <workerport>")
-    elif sys.argv[1] == sys.argv[2]:
+    elif sys.argv[ARG_1] == sys.argv[ARG_2]:
         raise ValueError("ERROR: Cannot use the same port for client and worker")
 
+# Client methods
 def determineCommand(commandArray): 
     output = ""
     try:
         match commandArray[0]:
             case "JOB":
-                output = addJob(commandArray[1])
+                output = addJob(commandArray[ARG_1])
             case "STATUS":
-                output = statusJob(commandArray[1])
+                output = statusJob(commandArray[ARG_1])
             case _: raise ValueError("ERROR: Commands should start with STATUS or JOB")
     except Exception as e:
         raise e
@@ -126,14 +133,15 @@ def statusJob(jobValue):
 
     return returnText
 
+# Worker methods
 def determineWorkerRequest(commandArray):
     output = ""
     try:
-        match commandArray[0]:
+        match commandArray[ARG_0]:
             case "GET":
                 output = getJob()
             case "DONE":
-                output = finishJob(commandArray[1])
+                output = finishJob(commandArray[ARG_1])
             case _:
                 raise ValueError("Must either be GET or DONE")
     except Exception as e:
