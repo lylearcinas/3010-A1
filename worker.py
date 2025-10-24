@@ -17,7 +17,7 @@ def main():
 def runProgram():
     try:
         verifyArgs()
-        serversocket.bind((hostname, int(sys.argv[ARG_1])))
+        serversocket.bind((hostname, sys.argv[ARG_1]))
         serversocket.listen(5)
 
         while True:
